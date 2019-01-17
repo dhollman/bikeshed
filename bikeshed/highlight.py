@@ -33,7 +33,7 @@ def addSyntaxHighlighting(doc):
             # Element was already highlighted, but needs styles
             highlightingOccurred = True
         elif lang:
-            highlightEl(el, lang)
+            highlightEl(el, lang, md=doc.md)
             highlightingOccurred = True
         # Find whether to add line numbers
         addLineNumbers, lineStart, lineHighlights = determineLineNumbers(doc, el)
@@ -124,12 +124,12 @@ def determineLineNumbers(doc, el):
     return addLineNumbers, lineStart, lineHighlights
 
 
-def highlightEl(el, lang):
+def highlightEl(el, lang, md=None):
     text = textContent(el)
     if lang == "webidl":
         coloredText = highlightWithWebIDL(text, el=el)
     else:
-        coloredText = highlightWithPygments(text, lang, el=el)
+        coloredText = highlightWithPygments(text, lang, el=el, md=md)
     mergeHighlighting(el, coloredText)
     addClass(el, "highlight")
 
@@ -211,10 +211,10 @@ def coloredTextFromWidlStack(widlText):
         coloredTexts.append(ColoredText(currentText, None))
     return coloredTexts
 
-def highlightWithPygments(text, lang, el):
+def highlightWithPygments(text, lang, el, md):
     import pygments
     from pygments import formatters
-    lexer = lexerFromLang(lang)
+    lexer = lexerFromLang(lang, md=md)
     if lexer is None:
         die("'{0}' isn't a known syntax-highlighting language. See http://pygments.org/docs/lexers/. Seen on:\n{1}", lang, outerHTML(el), el=el)
         return
@@ -319,7 +319,9 @@ def coloredTextFromRawTokens(text):
         "Token.Name.Variable.Class": "vc",
         "Token.Name.Variable.Global": "vg",
         "Token.Name.Variable.Instance": "vi",
-        "Token.Literal.Number.Integer.Long": "il"
+        "Token.Literal.Number.Integer.Long": "il",
+        "Token.Generic.Emph": "em",
+        "Token.Name.Variable.Magic": "ma",
     }
     def addCtToList(list, ct):
         if "\n" in ct.text:
@@ -374,14 +376,18 @@ def normalizeHighlightMarkers(doc):
             el.set("highlight", match.group(1))
 
 
-def lexerFromLang(lang):
+def lexerFromLang(lang, md):
+    from .lexers import applyLexerExtensions
+    lexer = None
     if lang in customLexers:
-        return customLexers[lang]()
+        lexer = customLexers[lang]()
     try:
         from pygments.lexers import get_lexer_by_name
-        return get_lexer_by_name(lang, encoding="utf-8", stripAll=True)
+        lexer = get_lexer_by_name(lang, encoding="utf-8", stripAll=True)
     except:
         return None
+    lexer = applyLexerExtensions(lexer, md)
+    return lexer
 
 
 def addLineWrappers(el, numbers=True, start=1, highlights=None):
@@ -517,6 +523,8 @@ c-[vc] { color: #0077aa } /* Name.Variable.Class */
 c-[vg] { color: #0077aa } /* Name.Variable.Global */
 c-[vi] { color: #0077aa } /* Name.Variable.Instance */
 c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
+c-[em] { color: #384048; font-style: italic } /* Generic.Emph */ 
+c-[ma] { color: #0077aa; font-style: italic } /* Name.Variable.Magic */ 
 '''
 
 def getLineNumberStyles():

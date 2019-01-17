@@ -57,3 +57,30 @@ class CSSLexer(RegexLexer):
             (r"\s+", Text)
         ]
     }
+
+
+def applyLexerExtensions(lexer, md):
+    extraRules = []
+    for entry in md.extraPygments:
+        # TODO this is a potential security vulnerability when running bikeshed on a public server...
+        # TODO handle errors
+        entryDict = eval(entry)
+        #if type(entryDict) is not dict:
+        #    die("Extra Pygments Rules metadata should have the form: 'state' : (regex, actions...)")
+        extraRules.append(entryDict)
+    tokens = dict()
+    for ruleDict in extraRules:
+        for state, rule in ruleDict.items():
+            if state == b"<all>":
+                for baseState, rules in type(lexer).tokens.items():
+                    if baseState not in tokens:
+                        tokens[baseState] = []
+                    tokens[baseState].append(rule)
+            else:
+                if state not in tokens:
+                    tokens[state] = []
+                tokens[state].append(rule)
+    for rules in tokens.values():
+        rules.append(inherit)
+    newLexerType = type(b"CustomLexer", (type(lexer),), {b"tokens": tokens})
+    return newLexerType()

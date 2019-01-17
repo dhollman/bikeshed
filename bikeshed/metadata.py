@@ -60,6 +60,7 @@ class MetadataManager:
         self.displayShortname = None
         self.editors = []
         self.editorTerm = {"singular": "Editor", "plural": "Editors"}
+        self.extraPygments = []
         self.favicon = None
         self.forceCrossorigin = False
         self.group = None
@@ -731,6 +732,12 @@ def parseInlineTagCommand(key, val, lineNum):
     return {tag: command}
 
 
+def parseExtraPygments(key, val, lineNum):
+    # Turn it into a string representation of a dictionary, so that we can evaluate it later in the
+    # context that has the pygments.lexer.* and pygments.token.* symbols
+    return ["{" + val + "}"]
+
+
 def parse(lines):
     # Given HTML document text, in the form of an array of text lines,
     # extracts all <pre class=metadata> lines and parses their contents.
@@ -949,6 +956,7 @@ knownKeys = {
     "ED": Metadata("ED", "ED", joinValue, parseLiteral),
     "Editor": Metadata("Editor", "editors", joinList, parseEditor),
     "Editor Term": Metadata("Editor Term", "editorTerm", joinValue, parseEditorTerm),
+    "Extra Pygments Rules": Metadata("Extra rules for Pygments Lexer", "extraPygments", joinList, parseExtraPygments),
     "Favicon": Metadata("Favicon", "favicon", joinValue, parseLiteral),
     "Force Crossorigin": Metadata("Force Crossorigin", "forceCrossorigin", joinValue, parseBoolean),
     "Former Editor": Metadata("Former Editor", "previousEditors", joinList, parseEditor),
